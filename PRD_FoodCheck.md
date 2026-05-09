@@ -472,7 +472,7 @@ Pertanyaan-pertanyaan ini perlu dijawab sebelum atau selama development:
 1. **Nama produk:** Apakah "FoodCheck" adalah nama final? Perlu cek ketersediaan domain.
 2. **Sumber data bahan:** Apakah cukup mengandalkan pengetahuan Gemini, atau perlu database bahan tambahan (BPOM, EFSA)?
 3. **Disclaimer hukum:** Apakah perlu konsultasi hukum sebelum launch untuk menghindari klaim terhadap merek/produk tertentu?
-4. **Monetisasi:** Kapan dan bagaimana model monetisasi diterapkan tanpa merusak UX gratis di awal?
+4. **Monetisasi:** Kapan dan bagaimana modexl monetisasi diterapkan tanpa merusak UX gratis di awal?
 5. **Bahasa:** Apakah perlu mendukung bahasa Inggris untuk bahan-bahan impor yang labelnya berbahasa Inggris?
 
 ---

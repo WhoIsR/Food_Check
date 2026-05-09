@@ -2,10 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import * as htmlToImage from "html-to-image";
+import { createClient } from "@/utils/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { useAuthModal } from "@/context/AuthModalContext";
+import { useRouter } from "next/navigation";
 import {
   MagnifyingGlass,
   ArrowRight,
   Sparkle,
+  ShareNetwork,
   Lightning,
   Eraser,
   ShieldCheck,
@@ -15,6 +21,8 @@ import HealthFilter from "@/components/HealthFilter";
 import CleanScore from "@/components/CleanScore";
 import IngredientCard from "@/components/IngredientCard";
 import AnalysisSkeleton from "@/components/AnalysisSkeleton";
+import ImageInput from "@/components/ImageInput";
+import DisclaimerModal from "@/components/DisclaimerModal";
 import type { AnalysisState, HealthCondition } from "@/lib/types";
 
 const EXAMPLE_INGREDIENTS =
@@ -24,8 +32,29 @@ export default function HomePage() {
   const [ingredients, setIngredients] = useState("");
   const [conditions, setConditions] = useState<HealthCondition[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [scanMode, setScanMode] = useState<"AUTO" | "OCR">("AUTO");
+  const [user, setUser] = useState<User | null>(null);
+  const supabase = createClient();
+  const { openModal } = useAuthModal();
+  const captureRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("auth") === "true") {
+        openModal();
+        router.replace("/", { scroll: false });
+      }
+    }
+  }, [supabase, router, openModal]);
 
   // Load conditions from localStorage
   useEffect(() => {
@@ -45,7 +74,12 @@ export default function HomePage() {
   }, [conditions]);
 
   const handleAnalyze = async () => {
-    if (!ingredients.trim()) return;
+    if (!ingredients.trim() && !selectedImage) {
+      if (scanMode === "OCR") {
+        alert("Mode 'Label Kemasan (OCR)' mewajibkan Anda untuk mengunggah foto tabel komposisi.");
+      }
+      return;
+    }
 
     setAnalysis({ status: "loading" });
 
@@ -55,14 +89,32 @@ export default function HomePage() {
     }, 200);
 
     try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ingredients: ingredients.trim(),
-          conditions,
-        }),
-      });
+      let response: Response;
+
+      if (selectedImage) {
+        // Use FormData for image upload
+        const formData = new FormData();
+        formData.append("image", selectedImage);
+        formData.append("ingredients", ingredients.trim());
+        formData.append("conditions", JSON.stringify(conditions));
+        formData.append("scanMode", scanMode);
+
+        response = await fetch("/api/analyze", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        // Use JSON for text-only
+        response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ingredients: ingredients.trim(),
+            conditions,
+            scanMode,
+          }),
+        });
+      }
 
       const data = await response.json();
 
@@ -75,6 +127,22 @@ export default function HomePage() {
       }
 
       setAnalysis({ status: "success", data });
+
+      // Save to history if logged in
+      if (user) {
+        try {
+          await supabase.from("scan_history").insert({
+            user_id: user.id,
+            product_name: "Hasil Scan " + new Date().toLocaleString("id-ID"),
+            clean_score: data.clean_score,
+            health_status: data.score_label,
+            summary: "Skor: " + data.clean_score + " - " + data.score_label,
+            ingredients: data.ingredients,
+          });
+        } catch (saveError) {
+          console.error("Gagal menyimpan riwayat:", saveError);
+        }
+      }
     } catch {
       setAnalysis({
         status: "error",
@@ -85,6 +153,7 @@ export default function HomePage() {
 
   const handleClear = () => {
     setIngredients("");
+    setSelectedImage(null);
     setAnalysis({ status: "idle" });
     textareaRef.current?.focus();
   };
@@ -94,15 +163,42 @@ export default function HomePage() {
     textareaRef.current?.focus();
   };
 
+  const handleShare = async () => {
+    if (!user) {
+      openModal();
+      return;
+    }
+    
+    if (captureRef.current) {
+      try {
+        const dataUrl = await htmlToImage.toPng(captureRef.current, {
+          quality: 0.95,
+          backgroundColor: "var(--bg-primary)",
+          style: { padding: "20px" },
+        });
+        const link = document.createElement("a");
+        link.download = `foodcheck-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error("Gagal membuat gambar:", err);
+        alert("Gagal membagikan gambar. Coba lagi.");
+      }
+    }
+  };
+
   const charCount = ingredients.length;
   const isOverLimit = charCount > 2000;
   const canAnalyze =
-    ingredients.trim().length > 0 &&
+    (ingredients.trim().length > 0 || selectedImage !== null) &&
     !isOverLimit &&
     analysis.status !== "loading";
 
   return (
     <main className="min-h-[100dvh] flex flex-col">
+      {/* Disclaimer modal (shows once) */}
+      <DisclaimerModal />
+
       {/* Navbar spacer */}
       <div className="h-20" />
 
@@ -149,39 +245,12 @@ export default function HomePage() {
               className="text-base leading-relaxed max-w-[50ch]"
               style={{ color: "var(--text-secondary)" }}
             >
-              Tempel daftar bahan dari label kemasan, dapatkan penjelasan mudah
-              dipahami beserta peringatan untuk kondisi kesehatanmu.
+              Tempel daftar bahan dari label kemasan, atau foto langsung label
+              komposisinya — dapatkan penjelasan mudah dipahami beserta
+              peringatan untuk kondisi kesehatanmu.
             </p>
 
-            {/* Quick stats */}
-            <div className="flex items-center gap-6 pt-2">
-              <div className="flex items-center gap-2">
-                <Lightning
-                  size={16}
-                  weight="fill"
-                  style={{ color: "var(--accent)" }}
-                />
-                <span
-                  className="text-xs"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Hasil dalam 3 detik
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck
-                  size={16}
-                  weight="fill"
-                  style={{ color: "var(--accent)" }}
-                />
-                <span
-                  className="text-xs"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  Tanpa registrasi
-                </span>
-              </div>
-            </div>
+
           </motion.div>
 
           {/* Right: Decorative element (hidden on mobile) */}
@@ -237,6 +306,14 @@ export default function HomePage() {
           {/* Health conditions */}
           <HealthFilter selected={conditions} onChange={setConditions} />
 
+          {/* Image input */}
+          <ImageInput
+            onImageSelect={setSelectedImage}
+            currentImage={selectedImage}
+            scanMode={scanMode}
+            onScanModeChange={setScanMode}
+          />
+
           {/* Textarea */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -245,7 +322,14 @@ export default function HomePage() {
                 className="text-xs font-medium uppercase tracking-widest"
                 style={{ color: "var(--text-tertiary)" }}
               >
-                Daftar Bahan
+                Daftar Bahan{" "}
+                <span className="normal-case tracking-normal font-normal">
+                  {selectedImage 
+                    ? "(opsional — bisa dari foto)" 
+                    : scanMode === "OCR" 
+                      ? "(wajib upload foto untuk OCR)" 
+                      : "(ketik manual)"}
+                </span>
               </label>
               <span
                 className="text-[11px] font-mono"
@@ -271,7 +355,11 @@ export default function HomePage() {
                 id="ingredients-input"
                 value={ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
-                placeholder="Contoh: Gula, Tepung Terigu, Minyak Nabati, Pewarna Tartrazin CI 19140, Natrium Benzoat..."
+                placeholder={
+                  selectedImage
+                    ? "Opsional: tambahkan bahan yang tidak terbaca di foto..."
+                    : "Contoh: Gula, Tepung Terigu, Minyak Nabati, Pewarna Tartrazin CI 19140, Natrium Benzoat..."
+                }
                 rows={4}
                 className="w-full px-4 py-3.5 bg-transparent resize-none text-sm leading-relaxed"
                 style={{
@@ -283,19 +371,11 @@ export default function HomePage() {
 
               {/* Bottom toolbar */}
               <div
-                className="flex items-center justify-between px-4 py-2.5"
+                className="flex items-center justify-end px-4 py-2.5"
                 style={{ borderTop: `1px solid var(--divider)` }}
               >
-                <button
-                  onClick={handleExampleFill}
-                  className="text-xs font-medium transition-colors duration-150 cursor-pointer"
-                  style={{ color: "var(--accent)" }}
-                >
-                  Coba contoh
-                </button>
-
                 <div className="flex items-center gap-2">
-                  {ingredients.length > 0 && (
+                  {(ingredients.length > 0 || selectedImage) && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -401,6 +481,7 @@ export default function HomePage() {
           {/* Success */}
           {analysis.status === "success" && (
             <motion.div
+              ref={captureRef}
               key="success"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -462,6 +543,22 @@ export default function HomePage() {
                   />
                 ))}
               </div>
+
+              {/* Share Button */}
+              <div className="pt-4 flex justify-end">
+                <button
+                  onClick={handleShare}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <ShareNetwork size={18} />
+                  Bagikan sebagai Gambar
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -495,8 +592,8 @@ export default function HomePage() {
                   className="text-xs max-w-[40ch]"
                   style={{ color: "var(--text-tertiary)" }}
                 >
-                  Tempel daftar bahan dari label kemasan di kolom di atas, lalu
-                  klik &ldquo;Analisis&rdquo;
+                  Foto label kemasan atau ketik daftar bahan di kolom di atas,
+                  lalu klik &ldquo;Analisis&rdquo;
                 </p>
               </div>
             </motion.div>

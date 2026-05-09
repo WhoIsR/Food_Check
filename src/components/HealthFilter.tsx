@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { HEALTH_CONDITIONS, type HealthCondition } from "@/lib/types";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Drop,
   Heartbeat,
@@ -9,6 +10,8 @@ import {
   GrainsSlash,
   Plant,
   Smiley,
+  Plus,
+  X,
 } from "@phosphor-icons/react";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -26,6 +29,8 @@ interface HealthFilterProps {
 }
 
 export default function HealthFilter({ selected, onChange }: HealthFilterProps) {
+  const [customInput, setCustomInput] = useState("");
+
   const toggle = (id: HealthCondition) => {
     if (selected.includes(id)) {
       onChange(selected.filter((c) => c !== id));
@@ -34,15 +39,33 @@ export default function HealthFilter({ selected, onChange }: HealthFilterProps) 
     }
   };
 
+  const handleAddCustom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = customInput.trim();
+    if (val && !selected.includes(val)) {
+      onChange([...selected, val]);
+    }
+    setCustomInput("");
+  };
+
+  const removeCustom = (id: string) => {
+    onChange(selected.filter((c) => c !== id));
+  };
+
+  const customSelected = selected.filter(
+    (s) => !HEALTH_CONDITIONS.find((hc) => hc.id === s)
+  );
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <p
         className="text-xs font-medium uppercase tracking-widest"
         style={{ color: "var(--text-tertiary)" }}
       >
         Kondisi Kesehatan (opsional)
       </p>
-      <div className="flex flex-wrap gap-2">
+      
+      <div className="flex flex-wrap gap-2 items-center">
         {HEALTH_CONDITIONS.map((condition, index) => {
           const isActive = selected.includes(condition.id);
           const IconComponent = iconMap[condition.icon] || Smiley;
@@ -80,6 +103,55 @@ export default function HealthFilter({ selected, onChange }: HealthFilterProps) 
             </motion.button>
           );
         })}
+
+        <AnimatePresence>
+          {customSelected.map((custom) => (
+            <motion.div
+              key={custom}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200"
+              style={{
+                background: "var(--accent-subtle)",
+                color: "var(--accent)",
+                border: "1px solid var(--accent)",
+                boxShadow: "var(--shadow-glow)",
+              }}
+            >
+              <span>{custom}</span>
+              <button
+                onClick={() => removeCustom(custom)}
+                className="ml-1 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors focus:outline-none"
+              >
+                <X size={12} weight="bold" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        <form onSubmit={handleAddCustom} className="relative flex items-center">
+          <input
+            type="text"
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            placeholder="Tambah kondisi lain..."
+            className="pl-3 pr-8 py-2 rounded-xl text-xs transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            style={{
+              background: "var(--bg-primary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)",
+              width: "160px"
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!customInput.trim()}
+            className="absolute right-2 text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+          >
+            <Plus size={14} weight="bold" />
+          </button>
+        </form>
       </div>
     </div>
   );

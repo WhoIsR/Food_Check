@@ -18,13 +18,7 @@ export interface AnalysisResult {
   ingredients: IngredientResult[];
 }
 
-export type HealthCondition =
-  | "diabetes"
-  | "hipertensi"
-  | "ibu_hamil"
-  | "alergi_gluten"
-  | "alergi_kacang"
-  | "anak";
+export type HealthCondition = string;
 
 export interface HealthConditionOption {
   id: HealthCondition;

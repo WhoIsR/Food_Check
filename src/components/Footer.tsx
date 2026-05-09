@@ -21,6 +21,12 @@ export default function Footer() {
       >
         Sumber: BPOM RI, EFSA, WHO, Codex Alimentarius
       </p>
+      <p
+        className="text-[11px] pt-4 font-medium"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Developed by Radja
+      </p>
     </footer>
   );
 }

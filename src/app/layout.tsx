@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { AuthModalProvider } from "@/context/AuthModalContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import AuthModal from "@/components/AuthModal";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -65,11 +67,14 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-[100dvh] flex flex-col">
+      <body className="min-h-[100dvh] flex flex-col relative">
         <ThemeProvider>
-          <Navbar />
-          <div className="flex-1">{children}</div>
-          <Footer />
+          <AuthModalProvider>
+            <Navbar />
+            <div className="flex-1">{children}</div>
+            <Footer />
+            <AuthModal />
+          </AuthModalProvider>
         </ThemeProvider>
       </body>
     </html>
