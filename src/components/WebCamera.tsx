@@ -63,13 +63,30 @@ export default function WebCamera({ onCapture, onClose }: WebCameraProps) {
   const handleCapture = () => {
     if (!videoRef.current) return;
 
+    // Batasi dimensi maksimal agar iOS Safari tidak kehabisan memori (layar hitam)
+    const MAX_DIMENSION = 1920;
+    let targetWidth = videoRef.current.videoWidth;
+    let targetHeight = videoRef.current.videoHeight;
+
+    if (targetWidth > MAX_DIMENSION || targetHeight > MAX_DIMENSION) {
+      const ratio = Math.min(MAX_DIMENSION / targetWidth, MAX_DIMENSION / targetHeight);
+      targetWidth = Math.round(targetWidth * ratio);
+      targetHeight = Math.round(targetHeight * ratio);
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
     const ctx = canvas.getContext("2d");
     
     if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      // Jika kamera depan, flip gambarnya (opsional, tapi UI video sudah diflip)
+      if (facingMode === "user") {
+        ctx.translate(targetWidth, 0);
+        ctx.scale(-1, 1);
+      }
+      
+      ctx.drawImage(videoRef.current, 0, 0, targetWidth, targetHeight);
       
       canvas.toBlob(
         (blob) => {

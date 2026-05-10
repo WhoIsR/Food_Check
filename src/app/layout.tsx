@@ -67,7 +67,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-[100dvh] flex flex-col relative">
+      <body className="min-h-screen min-h-[100dvh] flex flex-col relative">
         <ThemeProvider>
           <AuthModalProvider>
             <Navbar />

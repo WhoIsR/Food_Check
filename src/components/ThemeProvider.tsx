@@ -49,14 +49,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }, []);
 
-  // Prevent flash of wrong theme
-  if (!mounted) {
-    return (
-      <div style={{ visibility: "hidden" }}>
-        {children}
-      </div>
-    );
-  }
+  // We don't hide the children before mount anymore because the inline script 
+  // in layout.tsx already prevents the flash of incorrect theme.
+  // Hiding it can cause the screen to stay completely blank on older browsers if JS errors occur.
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
