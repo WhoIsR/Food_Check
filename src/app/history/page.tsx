@@ -394,7 +394,7 @@ export default function HistoryPage() {
                                 background: "var(--bg-primary)",
                                 color: "var(--text-primary)",
                                 borderColor: "var(--accent)",
-                                ringColor: "var(--accent)"
+                                // ringColor: "var(--accent)"
                               }}
                             />
                             <button

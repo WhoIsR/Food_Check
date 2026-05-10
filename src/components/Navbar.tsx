@@ -82,13 +82,12 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-transform group-hover:scale-105"
-              style={{ background: "var(--accent-subtle)" }}
+              className="w-10 h-10 flex items-center justify-center transition-transform group-hover:scale-105"
             >
-              <ShieldCheck
-                size={20}
-                weight="duotone"
-                style={{ color: "var(--accent)" }}
+              <img
+                src="/logo.png"
+                alt="FoodCheck Logo"
+                className="w-full h-full object-contain"
               />
             </div>
             <motion.div 
