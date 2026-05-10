@@ -8,6 +8,7 @@ const ANALYSIS_PROMPT = `Kamu adalah ahli keamanan pangan dan nutrisi. Analisis 
 Berikan respons dalam format JSON SAJA (tanpa markdown, tanpa backtick, tanpa penjelasan tambahan di luar JSON) dengan struktur berikut:
 
 {
+  "product_name": "<Tebak nama produk berdasarkan gambar atau nama merek jika ada di teks/foto, jika tidak tahu tulis 'Produk Makanan/Minuman'>",
   "clean_score": <angka 0-100, di mana 100 = semua bahan aman>,
   "score_label": "<salah satu dari: Sangat Bersih / Cukup Bersih / Perlu Waspada / Tidak Disarankan>",
   "ingredients": [

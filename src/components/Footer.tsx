@@ -25,7 +25,7 @@ export default function Footer() {
         className="text-[11px] pt-4 font-medium"
         style={{ color: "var(--text-secondary)" }}
       >
-        Developed by Radja
+        Developed by Kateam
       </p>
     </footer>
   );

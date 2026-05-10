@@ -15,7 +15,10 @@ import {
   WarningCircle,
   XCircle,
   Funnel,
-  TrendUp
+  TrendUp,
+  PencilSimple,
+  Check,
+  X
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import IngredientCard from "@/components/IngredientCard";
@@ -36,6 +39,10 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   
+  // Edit Name State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
   // Filtering & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "SAFE" | "WARN" | "DANGER">("ALL");
@@ -75,6 +82,46 @@ export default function HistoryPage() {
     
     setHistory((prev) => prev.filter((item) => item.id !== id));
     await supabase.from("scan_history").delete().eq("id", id);
+  };
+
+  const handleSaveName = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    const trimmedName = editName.trim();
+    if (!trimmedName) {
+      setEditingId(null);
+      return;
+    }
+
+    // Optimistic UI update
+    const previousHistory = [...history];
+    setHistory((prev) => 
+      prev.map((item) => 
+        item.id === id ? { ...item, product_name: trimmedName } : item
+      )
+    );
+    setEditingId(null);
+    
+    // Database update
+    const { error } = await supabase
+      .from("scan_history")
+      .update({ product_name: trimmedName })
+      .eq("id", id)
+      // also ensure we're updating the user's own row just in case
+      .eq("user_id", user?.id);
+
+    if (error) {
+      console.error("Gagal menyimpan nama:", error);
+      alert("Gagal menyimpan perubahan ke database. Coba lagi.");
+      // Revert state if failed
+      setHistory(previousHistory);
+    }
+  };
+
+  const startEditing = (item: ScanHistory, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditName(item.product_name);
+    setEditingId(item.id);
   };
 
   const formatDate = (dateStr: string) => {
@@ -330,9 +377,54 @@ export default function HistoryPage() {
                         <p className="text-xs mb-1 font-medium" style={{ color: "var(--text-tertiary)" }}>
                           {formatDate(item.created_at)}
                         </p>
-                        <h3 className="font-bold text-lg mb-2 line-clamp-1" style={{ color: "var(--text-primary)" }} title={item.product_name}>
-                          {item.product_name}
-                        </h3>
+                        
+                        {editingId === item.id ? (
+                          <div className="flex items-center gap-2 mb-2" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveName(item.id);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              autoFocus
+                              className="px-2 py-1 text-lg font-bold rounded-lg border w-full focus:outline-none focus:ring-2"
+                              style={{ 
+                                background: "var(--bg-primary)",
+                                color: "var(--text-primary)",
+                                borderColor: "var(--accent)",
+                                ringColor: "var(--accent)"
+                              }}
+                            />
+                            <button
+                              onClick={(e) => handleSaveName(item.id, e)}
+                              className="p-1.5 rounded-lg bg-green-500/10 text-green-500 transition-colors hover:bg-green-500/20"
+                            >
+                              <Check size={18} weight="bold" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
+                              className="p-1.5 rounded-lg bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20"
+                            >
+                              <X size={18} weight="bold" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mb-2 group/title">
+                            <h3 className="font-bold text-lg line-clamp-1" style={{ color: "var(--text-primary)" }} title={item.product_name}>
+                              {item.product_name}
+                            </h3>
+                            <button
+                              onClick={(e) => startEditing(item, e)}
+                              className="p-1 rounded-md opacity-0 group-hover/title:opacity-100 transition-opacity hover:bg-[var(--bg-tertiary)]"
+                              style={{ color: "var(--text-tertiary)" }}
+                            >
+                              <PencilSimple size={16} />
+                            </button>
+                          </div>
+                        )}
+
                         <p className="text-sm line-clamp-2" style={{ color: "var(--text-secondary)" }}>
                           {item.summary}
                         </p>

@@ -11,7 +11,7 @@ export default function DisclaimerModal() {
 
   useEffect(() => {
     // Show modal if user hasn't accepted yet
-    const accepted = localStorage.getItem(DISCLAIMER_KEY);
+    const accepted = sessionStorage.getItem(DISCLAIMER_KEY);
     if (!accepted) {
       // Small delay so the page renders first
       const timer = setTimeout(() => setShow(true), 800);
@@ -20,7 +20,7 @@ export default function DisclaimerModal() {
   }, []);
 
   const handleAccept = useCallback(() => {
-    localStorage.setItem(DISCLAIMER_KEY, Date.now().toString());
+    sessionStorage.setItem(DISCLAIMER_KEY, Date.now().toString());
     setShow(false);
   }, []);
 

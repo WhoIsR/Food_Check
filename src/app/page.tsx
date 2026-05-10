@@ -133,7 +133,9 @@ export default function HomePage() {
         try {
           await supabase.from("scan_history").insert({
             user_id: user.id,
-            product_name: "Hasil Scan " + new Date().toLocaleString("id-ID"),
+            product_name: data.product_name && data.product_name !== "Produk Makanan/Minuman" 
+              ? data.product_name 
+              : "Hasil Scan " + new Date().toLocaleString("id-ID"),
             clean_score: data.clean_score,
             health_status: data.score_label,
             summary: "Skor: " + data.clean_score + " - " + data.score_label,
