@@ -160,7 +160,7 @@ ${ANALYSIS_PROMPT}`;
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 8192,
@@ -178,7 +178,7 @@ ${ANALYSIS_PROMPT}`;
       hasImage: !!imagePart,
       hasText: !!ingredients.trim(),
       conditions,
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
     });
 
     const result = await model.generateContent(parts);
